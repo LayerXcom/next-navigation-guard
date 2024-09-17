@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2019", // minimum Next v12 -> Node 12.22.0 w/ ESM support
+    "lib": ["es2019", "dom", "dom.iterable"],
+    "types": [],
+    "jsx": "react",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src"]
+}
