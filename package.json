@@ -8,6 +8,9 @@
   "exports": {
     "import": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "sideEffects": false,
   "scripts": {
     "build": "tsc -p .",
