@@ -2,12 +2,12 @@ import { NextRouter } from "next/dist/client/router";
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import { Url } from "next/dist/shared/lib/router/router";
 import { MutableRefObject, useContext, useMemo } from "react";
-import { NavigationGuard } from "../types";
+import { GuardDef } from "../types";
 
 export function useInterceptedPagesRouter({
-  callbackMapRef,
+  guardMapRef,
 }: {
-  callbackMapRef: MutableRefObject<Map<string, NavigationGuard>>;
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>;
 }) {
   const origRouter = useContext(RouterContext);
 
@@ -16,17 +16,18 @@ export function useInterceptedPagesRouter({
 
     const guarded = async (
       type: "push" | "replace" | "refresh",
-      to: Url,
+      toUrl: Url,
       accepted: () => Promise<boolean>
     ): Promise<boolean> => {
-      const callbacks = [...callbackMapRef.current.values()];
-      for (const callback of callbacks) {
-        const confirm = await callback({
-          to: typeof to === "string" ? to : to.href ?? "",
-          type,
-        });
+      const to = typeof toUrl === "string" ? toUrl : toUrl.href ?? "";
+      const defs = [...guardMapRef.current.values()];
+      for (const { enabled, callback } of defs) {
+        if (!enabled({ to, type })) continue;
+
+        const confirm = await callback({ to, type });
         if (!confirm) return false;
       }
+
       return await accepted();
     };
 

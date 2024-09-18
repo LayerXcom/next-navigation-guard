@@ -1,6 +1,6 @@
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import { useContext } from "react";
-import { NavigationGuard, RenderedState } from "../types";
+import { GuardDef, RenderedState } from "../types";
 import { DEBUG } from "../utils/debug";
 import {
   newToken,
@@ -15,9 +15,9 @@ const renderedStateRef: { current: RenderedState } = {
 };
 
 export function useInterceptPopState({
-  callbackMapRef,
+  guardMapRef,
 }: {
-  callbackMapRef: React.MutableRefObject<Map<string, NavigationGuard>>;
+  guardMapRef: React.MutableRefObject<Map<string, GuardDef>>;
 }) {
   const pagesRouter = useContext(RouterContext);
 
@@ -26,7 +26,7 @@ export function useInterceptPopState({
     // https://github.com/vercel/next.js/blob/50b9966ba9377fd07a27e3f80aecd131fa346482/packages/next/src/client/components/app-router.tsx#L518
     const { writeState } = setupHistoryAugmentationOnce({ renderedStateRef });
 
-    const handlePopState = createHandlePopState(callbackMapRef, writeState);
+    const handlePopState = createHandlePopState(guardMapRef, writeState);
 
     if (pagesRouter) {
       pagesRouter.beforePopState(() => handlePopState(history.state));
@@ -54,7 +54,7 @@ export function useInterceptPopState({
 }
 
 function createHandlePopState(
-  callbackMapRef: React.MutableRefObject<Map<string, NavigationGuard>>,
+  guardMapRef: React.MutableRefObject<Map<string, GuardDef>>,
   writeState: () => void
 ) {
   let dispatchedState: unknown;
@@ -92,9 +92,9 @@ function createHandlePopState(
 
     const to = location.pathname + location.search;
 
-    const callbacks = [...callbackMapRef.current.values()];
+    const defs = [...guardMapRef.current.values()];
 
-    if (nextState === dispatchedState || callbacks.length === 0) {
+    if (nextState === dispatchedState || defs.length === 0) {
       if (DEBUG)
         console.log(
           `useInterceptPopState(): Accept popstate event, index: ${nextIndex}`
@@ -111,8 +111,10 @@ function createHandlePopState(
 
     // Wait for all callbacks to be resolved
     (async () => {
-      for (const callback of callbacks) {
-        const confirm = await callback({ to, type: "popstate" });
+      for (const def of defs) {
+        if (!def.enabled({ to, type: "popstate" })) continue;
+
+        const confirm = await def.callback({ to, type: "popstate" });
         // TODO: check cancel while waiting for navigation guard
         if (!confirm) {
           if (DEBUG) {

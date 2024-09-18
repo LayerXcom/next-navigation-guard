@@ -3,12 +3,12 @@ import {
   AppRouterInstance,
 } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { MutableRefObject, useContext, useMemo } from "react";
-import { NavigationGuard } from "../types";
+import { GuardDef } from "../types";
 
 export function useInterceptedAppRouter({
-  callbackMapRef,
+  guardMapRef,
 }: {
-  callbackMapRef: MutableRefObject<Map<string, NavigationGuard>>;
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>;
 }) {
   const origRouter = useContext(AppRouterContext);
 
@@ -20,8 +20,10 @@ export function useInterceptedAppRouter({
       to: string,
       accepted: () => void
     ) => {
-      const callbacks = [...callbackMapRef.current.values()];
-      for (const callback of callbacks) {
+      const defs = [...guardMapRef.current.values()];
+      for (const { enabled, callback } of defs) {
+        if (!enabled({ to, type })) continue;
+
         const confirm = await callback({ to, type });
         if (!confirm) return;
       }

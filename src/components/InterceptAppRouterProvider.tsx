@@ -3,16 +3,16 @@
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import React, { MutableRefObject } from "react";
 import { useInterceptedAppRouter } from "../hooks/useInterceptedAppRouter";
-import { NavigationGuard } from "../types";
+import { GuardDef } from "../types";
 
 export function InterceptAppRouterProvider({
-  callbackMapRef,
+  guardMapRef,
   children,
 }: {
-  callbackMapRef: MutableRefObject<Map<string, NavigationGuard>>;
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>;
   children: React.ReactNode;
 }) {
-  const interceptedRouter = useInterceptedAppRouter({ callbackMapRef });
+  const interceptedRouter = useInterceptedAppRouter({ guardMapRef });
   if (!interceptedRouter) {
     return <>{children}</>;
   }
