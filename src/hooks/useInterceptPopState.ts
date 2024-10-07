@@ -111,8 +111,17 @@ function createHandlePopState(
 
     // Wait for all callbacks to be resolved
     (async () => {
+      let i = -1;
+
       for (const def of defs) {
+        i++;
+
         if (!def.enabled({ to, type: "popstate" })) continue;
+        if (DEBUG) {
+          console.log(
+            `useInterceptPopState(): confirmation for listener index ${i}`
+          );
+        }
 
         const confirm = await def.callback({ to, type: "popstate" });
         // TODO: check cancel while waiting for navigation guard
@@ -125,17 +134,21 @@ function createHandlePopState(
             );
           }
           if (delta !== 0) {
+            // discard event
             window.history.go(-delta);
           }
           return;
         }
+      }
 
-        // accept
-        dispatchedState = nextState;
-        window.dispatchEvent(
-          new PopStateEvent("popstate", { state: nextState })
+      if (DEBUG) {
+        console.log(
+          `useInterceptPopState(): Accept popstate event, ${nextIndex}`
         );
       }
+      // accept
+      dispatchedState = nextState;
+      window.dispatchEvent(new PopStateEvent("popstate", { state: nextState }));
     })();
 
     // Return false to call stopImmediatePropagation()
