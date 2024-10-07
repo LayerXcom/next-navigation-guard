@@ -3,6 +3,10 @@
 You use Next.js, and you want to show "You have unsaved changes that will be lost." dialog when user leaves page?
 This library is just for you!
 
+## Demo
+
+[https://layerxcom.github.io/next-navigation-guard/](https://layerxcom.github.io/next-navigation-guard/)
+
 ## How does it work?
 
 - [English Slide](https://speakerdeck.com/ypresto/cancel-next-js-page-navigation-full-throttle)
