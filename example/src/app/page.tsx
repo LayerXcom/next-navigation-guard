@@ -12,9 +12,6 @@ export default function Home() {
             <li>
               <Link href="/page1">App Router</Link>
             </li>
-          </ol>
-
-          <ol>
             <li>
               <Link href="/pages-router/page1">Pages Router</Link>
             </li>
