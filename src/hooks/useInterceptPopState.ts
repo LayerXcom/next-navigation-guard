@@ -129,7 +129,7 @@ function createHandlePopState(
           if (DEBUG) {
             console.log(
               `useInterceptPopState(): Cancel popstate event, go(): ${
-                renderedStateRef.current
+                renderedStateRef.current.index
               } - ${nextIndex} = ${-delta}`
             );
           }
