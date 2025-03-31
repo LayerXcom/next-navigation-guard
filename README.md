@@ -17,7 +17,7 @@ This library is just for you!
 ```bash
 npm install next-navigation-guard
 # or
-yarn install next-navigation-guard
+yarn add next-navigation-guard
 # or
 pnpm install next-navigation-guard
 ```
