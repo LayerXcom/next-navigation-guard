@@ -19,16 +19,19 @@ export async function evaluateGuards(
     if (!enabled(params)) continue;
 
     const confirmFn = mockConfirm ?? callback;
-    if (mockConfirm) debug(`Calling mockConfirm`);
-    else debug(`Calling guard callback`);
+    if (mockConfirm) {
+      debug(`Calling mockConfirm for ${params.type} to ${params.to}`);
+    } else {
+      debug(`Calling guard callback for ${params.type} to ${params.to}`);
+    }
     const confirm = await confirmFn(params);
-    debug(`Confirm returned: ${confirm}`);
+    debug(`Guard callback returned: ${confirm}`);
     if (!confirm) {
       debug(`Navigation blocked`);
       return false;
     }
   }
 
-  debug(`All guards passed`);
+  debug(`All guards passed, proceeding with navigation`);
   return true;
 }
