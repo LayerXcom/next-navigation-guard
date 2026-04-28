@@ -1,7 +1,8 @@
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
-import { useContext } from "react";
+import { MutableRefObject, useContext } from "react";
 import { GuardDef, RenderedState } from "../types";
 import { DEBUG } from "../utils/debug";
+import { evaluateGuards } from "../utils/evaluateGuards";
 import {
   newToken,
   setupHistoryAugmentationOnce,
@@ -16,12 +17,16 @@ const renderedStateRef: { current: RenderedState } = {
 
 export function useInterceptPopState({
   guardMapRef,
+  disabled,
 }: {
-  guardMapRef: React.MutableRefObject<Map<string, GuardDef>>;
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+  disabled: boolean;
 }) {
   const pagesRouter = useContext(RouterContext);
 
   useIsomorphicLayoutEffect(() => {
+    if (disabled) return;
+
     // NOTE: Called before Next.js router setup which is useEffect().
     // https://github.com/vercel/next.js/blob/50b9966ba9377fd07a27e3f80aecd131fa346482/packages/next/src/client/components/app-router.tsx#L518
     const { writeState } = setupHistoryAugmentationOnce({ renderedStateRef });
@@ -50,11 +55,11 @@ export function useInterceptPopState({
         window.removeEventListener("popstate", onPopState);
       };
     }
-  }, [pagesRouter]);
+  }, [pagesRouter, disabled]);
 }
 
 function createHandlePopState(
-  guardMapRef: React.MutableRefObject<Map<string, GuardDef>>,
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>,
   writeState: () => void
 ) {
   let dispatchedState: unknown;
@@ -92,9 +97,7 @@ function createHandlePopState(
 
     const to = location.pathname + location.search;
 
-    const defs = [...guardMapRef.current.values()];
-
-    if (nextState === dispatchedState || defs.length === 0) {
+    if (nextState === dispatchedState || guardMapRef.current.size === 0) {
       if (DEBUG)
         console.log(
           `useInterceptPopState(): Accept popstate event, index: ${nextIndex}`
@@ -109,36 +112,23 @@ function createHandlePopState(
         `useInterceptPopState(): Suspend popstate event, index: ${nextIndex}`
       );
 
-    // Wait for all callbacks to be resolved
+    // Wait for guard evaluation
     (async () => {
-      let i = -1;
+      const ok = await evaluateGuards(guardMapRef, { to, type: "popstate" });
 
-      for (const def of defs) {
-        i++;
-
-        if (!def.enabled({ to, type: "popstate" })) continue;
+      if (!ok) {
         if (DEBUG) {
           console.log(
-            `useInterceptPopState(): confirmation for listener index ${i}`
+            `useInterceptPopState(): Cancel popstate event, go(): ${
+              renderedStateRef.current.index
+            } - ${nextIndex} = ${-delta}`
           );
         }
-
-        const confirm = await def.callback({ to, type: "popstate" });
-        // TODO: check cancel while waiting for navigation guard
-        if (!confirm) {
-          if (DEBUG) {
-            console.log(
-              `useInterceptPopState(): Cancel popstate event, go(): ${
-                renderedStateRef.current.index
-              } - ${nextIndex} = ${-delta}`
-            );
-          }
-          if (delta !== 0) {
-            // discard event
-            window.history.go(-delta);
-          }
-          return;
+        if (delta !== 0) {
+          // discard event
+          window.history.go(-delta);
         }
+        return;
       }
 
       if (DEBUG) {

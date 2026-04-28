@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-02-26
+## [0.3.0] - 2026-04-28
 
 ### Added
 
-- Add `disableForTesting` option to `useNavigationGuard` to make the hook a complete no-op without requiring `NavigationGuardProvider` context, intended for test and storybook environments.
-- Support Next.js 16 as peer dependency and add E2E CI targets for v16.0 and v16.1.
+- Add `disableForTesting` prop to `NavigationGuardProvider`. When set, the library installs none of its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation, no Next.js router context overrides). `useNavigationGuard` keeps registering and `enabled` / `confirm` / `active` / `accept` / `reject` keep behaving as usual, so component-level tests and storybook stories render without mocking `window` or Next.js internals.
+- Support Next.js 16 as peer dependency and add E2E CI targets for v16.0, v16.1, and v16.2.
+
+### Fixed
+
+- Guard against null `history.state` in `createHandlePopState` ([#48](https://github.com/LayerXcom/next-navigation-guard/pull/48)). @sethcarlton
+- Fix import types ([#38](https://github.com/LayerXcom/next-navigation-guard/pull/38)). @lluiscab
 
 ## [0.2.0] - 2025-06-28
 

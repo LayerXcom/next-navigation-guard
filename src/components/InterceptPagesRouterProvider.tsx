@@ -3,7 +3,7 @@
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import React, { MutableRefObject } from "react";
 import { useInterceptedPagesRouter } from "../hooks/useInterceptedPagesRouter";
-import { GuardDef, NavigationGuardCallback } from "../types";
+import { GuardDef } from "../types";
 
 export function InterceptPagesRouterProvider({
   guardMapRef,

@@ -3,6 +3,7 @@ import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtim
 import { Url } from "next/dist/shared/lib/router/router";
 import { MutableRefObject, useContext, useMemo } from "react";
 import { GuardDef } from "../types";
+import { evaluateGuards } from "../utils/evaluateGuards";
 
 export function useInterceptedPagesRouter({
   guardMapRef,
@@ -20,14 +21,8 @@ export function useInterceptedPagesRouter({
       accepted: () => Promise<boolean>
     ): Promise<boolean> => {
       const to = typeof toUrl === "string" ? toUrl : toUrl.href ?? "";
-      const defs = [...guardMapRef.current.values()];
-      for (const { enabled, callback } of defs) {
-        if (!enabled({ to, type })) continue;
-
-        const confirm = await callback({ to, type });
-        if (!confirm) return false;
-      }
-
+      const ok = await evaluateGuards(guardMapRef, { to, type });
+      if (!ok) return false;
       return await accepted();
     };
 
@@ -48,5 +43,5 @@ export function useInterceptedPagesRouter({
         });
       },
     };
-  }, [origRouter]);
+  }, [origRouter, guardMapRef]);
 }

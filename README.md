@@ -74,3 +74,15 @@ pnpm install next-navigation-guard
   ```
 
 See working example in example/ directory and its `NavigationGuardToggle` component.
+
+## Testing / Storybook
+
+Pass `disableForTesting` to `NavigationGuardProvider` so the library does not install any of its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation, no Next.js router context overrides). `useNavigationGuard` keeps registering normally, so the `enabled` predicate, the `confirm` callback, and the `active` / `accept` / `reject` returned by the hook all keep working — your component renders the same as in production without needing mocks for `window` or Next.js.
+
+```tsx
+render(
+  <NavigationGuardProvider disableForTesting>
+    <MyComponent />
+  </NavigationGuardProvider>
+);
+```

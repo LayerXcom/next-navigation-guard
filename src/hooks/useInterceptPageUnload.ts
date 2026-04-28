@@ -1,12 +1,17 @@
+import { MutableRefObject } from "react";
 import { GuardDef } from "../types";
 import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 
 export function useInterceptPageUnload({
   guardMapRef,
+  disabled,
 }: {
-  guardMapRef: React.MutableRefObject<Map<string, GuardDef>>;
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+  disabled: boolean;
 }) {
   useIsomorphicLayoutEffect(() => {
+    if (disabled) return;
+
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       for (const def of guardMapRef.current.values()) {
         // We does not support confirm() on beforeunload as
@@ -25,5 +30,5 @@ export function useInterceptPageUnload({
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, []);
+  }, [disabled]);
 }
