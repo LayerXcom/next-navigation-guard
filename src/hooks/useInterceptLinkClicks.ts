@@ -2,6 +2,7 @@ import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 import { MutableRefObject, useRef, useContext } from "react";
 import { GuardDef } from "../types";
 import { debug } from "../utils/debug";
+import { stripBasePath } from "../utils/basePath";
 
 // Try to import AppRouterContext, but don't fail if it doesn't exist
 let AppRouterContext: any;
@@ -147,10 +148,11 @@ export function useInterceptLinkClicks({
         // Navigate programmatically since we prevented the default
         const router = (window as any).next?.router;
         if (router) {
+          const asPath = stripBasePath(href);
           if (navigateType === 'replace') {
-            router.replace(href);
+            router.replace(asPath);
           } else {
-            router.push(href);
+            router.push(asPath);
           }
         } else {
           // Fallback to location navigation
