@@ -15,14 +15,20 @@ export async function evaluateGuards(
 
   const mockConfirm = mockConfirmRef.current;
 
+  let i = -1;
   for (const { enabled, callback } of guardMapRef.current.values()) {
+    i++;
     if (!enabled(params)) continue;
 
     const confirmFn = mockConfirm ?? callback;
     if (mockConfirm) {
-      debug(`Calling mockConfirm for ${params.type} to ${params.to}`);
+      debug(
+        `Calling mockConfirm for ${params.type} to ${params.to} (listener index ${i})`
+      );
     } else {
-      debug(`Calling guard callback for ${params.type} to ${params.to}`);
+      debug(
+        `Calling guard callback for ${params.type} to ${params.to} (listener index ${i})`
+      );
     }
     const confirm = await confirmFn(params);
     debug(`Guard callback returned: ${confirm}`);
