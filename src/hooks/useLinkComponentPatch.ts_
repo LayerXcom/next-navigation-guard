@@ -1,0 +1,287 @@
+import { MutableRefObject, useEffect, useRef } from "react";
+import { GuardDef } from "../types";
+import { debug } from "../utils/debug";
+
+// Patch the Next.js Link component directly
+export function useLinkComponentPatch({
+  guardMapRef,
+}: {
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+}) {
+  const isPatchedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isPatchedRef.current) return;
+
+    const patchLinkComponent = () => {
+      try {
+        // Method 1: Try to intercept during module loading
+        // This works if we can catch the Link component being imported
+        const originalRequire = (window as any).require;
+        if (originalRequire && !originalRequire.__guardPatched) {
+          (window as any).require = function (id: string) {
+            const module = originalRequire.call(this, id);
+            
+            if (id === "next/link" && module) {
+              debug("Intercepted next/link require");
+              return patchLinkModule(module);
+            }
+            
+            return module;
+          };
+          (window as any).require.__guardPatched = true;
+        }
+
+        // Method 2: Patch ES module imports using Proxy
+        if ((window as any).__next_require__) {
+          const nextRequire = (window as any).__next_require__;
+          if (!nextRequire.__guardPatched) {
+            (window as any).__next_require__ = new Proxy(nextRequire, {
+              apply(target, thisArg, args) {
+                const result = Reflect.apply(target, thisArg, args);
+                const [moduleId] = args;
+                
+                if (moduleId && moduleId.includes("link")) {
+                  debug(`Intercepted Next.js module: ${moduleId}`);
+                  return patchLinkModule(result);
+                }
+                
+                return result;
+              }
+            });
+            (window as any).__next_require__.__guardPatched = true;
+          }
+        }
+
+        // Method 3: Try to find and patch React components in the global scope
+        const findLinkInGlobalScope = () => {
+          // Search through React's internal fiber tree
+          const reactRoot = document.getElementById("__next");
+          if (!reactRoot || !(reactRoot as any)._reactRootContainer) {
+            return null;
+          }
+
+          // Try to access React internals
+          const container = (reactRoot as any)._reactRootContainer;
+          const fiber = container._internalRoot?.current;
+          
+          if (fiber) {
+            // Traverse fiber tree to find Link components
+            const findLinkInFiber = (node: any): any => {
+              if (!node) return null;
+              
+              if (node.elementType && 
+                  (node.elementType.name === "Link" || 
+                   node.elementType.displayName === "Link")) {
+                return node.elementType;
+              }
+              
+              // Check child
+              const childResult = findLinkInFiber(node.child);
+              if (childResult) return childResult;
+              
+              // Check siblings
+              return findLinkInFiber(node.sibling);
+            };
+            
+            return findLinkInFiber(fiber);
+          }
+          
+          return null;
+        };
+
+
+        // Method 5: Patch using Object.defineProperty on modules
+        const patchModuleExports = () => {
+          // Try to find the module in require.cache
+          if ((window as any).require && (window as any).require.cache) {
+            for (const key in (window as any).require.cache) {
+              if (key.includes("next/link") || key.includes("next/dist") && key.includes("link")) {
+                const module = (window as any).require.cache[key];
+                if (module && module.exports) {
+                  debug(`Found Link module in cache: ${key}`);
+                  
+                  const LinkComponent = module.exports.default || module.exports;
+                  const patchedLink = patchLinkPrototype(LinkComponent);
+                  
+                  // Replace the exports
+                  module.exports = patchedLink;
+                  if (module.exports.default) {
+                    module.exports.default = patchedLink;
+                  }
+                  
+                  return true;
+                }
+              }
+            }
+          }
+          return false;
+        };
+
+        // Try all methods
+        const linkComponent = findLinkInGlobalScope();
+        if (linkComponent) {
+          patchLinkPrototype(linkComponent);
+          debug("Patched Link component found in global scope");
+          return true;
+        }
+
+        if (patchModuleExports()) {
+          debug("Patched Link component in module cache");
+          return true;
+        }
+
+        debug("Link component not found yet, will retry");
+        return false;
+
+      } catch (error) {
+        debug("Error patching Link component:", error);
+        return false;
+      }
+    };
+
+    // Helper function to create navigation handler
+    const createNavigateHandler = (props: any, guardMapRef: MutableRefObject<Map<string, GuardDef>>) => {
+      return async (event: { preventDefault: () => void }) => {
+        // Call original onNavigate if exists
+        if (props.onNavigate) {
+          props.onNavigate(event);
+        }
+
+        const href = props.href;
+        if (!href) return;
+
+        const navigateType = props.replace ? "replace" : "push";
+        debug(`Link onNavigate triggered: ${navigateType} to ${href}`);
+
+        // Run through guards
+        const defs = [...guardMapRef.current.values()];
+        for (const { enabled, callback } of defs) {
+          if (!enabled({ to: href, type: navigateType })) continue;
+
+          debug(`Calling guard callback for ${navigateType} to ${href}`);
+          const confirm = await callback({ to: href, type: navigateType });
+          debug(`Guard callback returned: ${confirm}`);
+
+          if (!confirm) {
+            debug(`Navigation blocked by guard`);
+            event.preventDefault();
+            return;
+          }
+        }
+
+        debug(`All guards passed, allowing navigation`);
+      };
+    };
+
+    // Helper to patch a Link module (moved before patchLinkComponent)
+    const patchLinkModule = (module: any) => {
+      if (!module) return module;
+      
+      const LinkComponent = module.default || module;
+      const patchedLink = patchLinkPrototype(LinkComponent);
+      
+      if (module.default) {
+        module.default = patchedLink;
+      }
+      
+      return module;
+    };
+
+    // Define patchLinkPrototype before it's used
+    const patchLinkPrototype = (LinkComponent: any) => {
+      if (!LinkComponent || LinkComponent.__guardPatched) {
+        return LinkComponent;
+      }
+
+      // For function components
+      if (typeof LinkComponent === "function") {
+        const OriginalLink = LinkComponent;
+        
+        // Create a wrapper function
+        const PatchedLink = function Link(props: any) {
+          debug("PatchedLink called with props:", { href: props.href });
+          
+          // Inject onNavigate handler
+          const enhancedProps = {
+            ...props,
+            onNavigate: createNavigateHandler(props, guardMapRef),
+          };
+          
+          // Call original component
+          return OriginalLink.call(this, enhancedProps);
+        };
+
+        // Use Object.setPrototypeOf to maintain prototype chain
+        Object.setPrototypeOf(PatchedLink, OriginalLink);
+        Object.setPrototypeOf(PatchedLink.prototype, OriginalLink.prototype);
+
+        // Copy all static properties and methods
+        for (const key of Object.getOwnPropertyNames(OriginalLink)) {
+          if (key !== "length" && key !== "name" && key !== "prototype") {
+            try {
+              const descriptor = Object.getOwnPropertyDescriptor(OriginalLink, key);
+              if (descriptor) {
+                Object.defineProperty(PatchedLink, key, descriptor);
+              }
+            } catch (e) {
+              // Some properties might be non-configurable
+              debug(`Could not copy property ${key}:`, e);
+            }
+          }
+        }
+
+        // Mark as patched
+        (PatchedLink as any).__guardPatched = true;
+        return PatchedLink;
+      }
+
+      // For class components (unlikely for Next.js Link)
+      if (LinkComponent.prototype && LinkComponent.prototype.render) {
+        const originalRender = LinkComponent.prototype.render;
+        
+        LinkComponent.prototype.render = function () {
+          const element = originalRender.call(this);
+          if (element && element.props) {
+            return {
+              ...element,
+              props: {
+                ...element.props,
+                onNavigate: createNavigateHandler(element.props, guardMapRef),
+              },
+            };
+          }
+          return element;
+        };
+        
+        LinkComponent.__guardPatched = true;
+      }
+
+      return LinkComponent;
+    };
+
+    // Try to patch immediately
+    if (patchLinkComponent()) {
+      isPatchedRef.current = true;
+      debug("Successfully patched Link component");
+    } else {
+      // Retry a few times if not ready
+      let attempts = 0;
+      const maxAttempts = 10;
+      const retryInterval = setInterval(() => {
+        attempts++;
+        if (patchLinkComponent() || attempts >= maxAttempts) {
+          clearInterval(retryInterval);
+          if (attempts < maxAttempts) {
+            isPatchedRef.current = true;
+            debug("Successfully patched Link component after retries");
+          } else {
+            debug("Failed to patch Link component after max attempts");
+          }
+        }
+      }, 100);
+
+      return () => clearInterval(retryInterval);
+    }
+  }, [guardMapRef]);
+}

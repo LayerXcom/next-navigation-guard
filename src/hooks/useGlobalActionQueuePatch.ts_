@@ -1,0 +1,233 @@
+import { MutableRefObject, useEffect, useRef } from "react";
+import { GuardDef } from "../types";
+import { debug } from "../utils/debug";
+
+// Navigation action types from Next.js
+const ACTION_NAVIGATE = "navigate";
+const ACTION_RESTORE = "restore";
+
+type NavigateAction = {
+  type: typeof ACTION_NAVIGATE;
+  url: URL;
+  isExternalUrl: boolean;
+  locationSearch: string;
+  navigateType: "push" | "replace";
+  shouldScroll: boolean;
+  allowAliasing?: boolean;
+};
+
+type RestoreAction = {
+  type: typeof ACTION_RESTORE;
+  url: URL;
+  tree?: any;
+};
+
+type ReducerActions = NavigateAction | RestoreAction | { type: string; [key: string]: any };
+
+// Hook into the global action queue system for Next.js 15.3+
+export function useGlobalActionQueuePatch({
+  guardMapRef,
+}: {
+  guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+}) {
+  const isPatchedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isPatchedRef.current) return;
+
+    // Try to access the global action queue through various methods
+    const patchActionQueue = () => {
+      // Method 1: Try to access through window.next internals
+      const windowNext = (window as any).next;
+      if (!windowNext) {
+        debug("window.next not found, retrying...");
+        return false;
+      }
+
+      // Method 2: Look for the router instance
+      const router = windowNext.router;
+      if (!router) {
+        debug("window.next.router not found, retrying...");
+        return false;
+      }
+
+      debug("Found window.next.router, attempting to patch navigation methods");
+
+      // Store original methods
+      const originalPush = router.push.bind(router);
+      const originalReplace = router.replace.bind(router);
+
+      // Helper function to run guards
+      const runGuards = async (href: string, type: "push" | "replace"): Promise<boolean> => {
+        const defs = [...guardMapRef.current.values()];
+        for (const { enabled, callback } of defs) {
+          if (!enabled({ to: href, type })) continue;
+
+          debug(`Calling guard callback for ${type} to ${href}`);
+          const confirm = await callback({ to: href, type });
+          debug(`Guard callback returned: ${confirm}`);
+          
+          if (!confirm) {
+            debug(`Navigation blocked by guard`);
+            return false;
+          }
+        }
+        return true;
+      };
+
+      // Patch push method
+      if (!router.push.__guardPatched) {
+        router.push = async function (href: string, options?: any) {
+          debug(`Router push intercepted: ${href}`);
+          
+          const shouldProceed = await runGuards(href, "push");
+          if (!shouldProceed) return;
+
+          debug(`All guards passed, proceeding with push`);
+          return originalPush(href, options);
+        };
+        router.push.__guardPatched = true;
+        debug("Patched router.push");
+      }
+
+      // Patch replace method
+      if (!router.replace.__guardPatched) {
+        router.replace = async function (href: string, options?: any) {
+          debug(`Router replace intercepted: ${href}`);
+          
+          const shouldProceed = await runGuards(href, "replace");
+          if (!shouldProceed) return;
+
+          debug(`All guards passed, proceeding with replace`);
+          return originalReplace(href, options);
+        };
+        router.replace.__guardPatched = true;
+        debug("Patched router.replace");
+      }
+
+      // Method 3: Try to intercept the global dispatch function
+      // Look for any global Next.js functions that might be exposed
+      const findAndPatchDispatch = () => {
+        // Check for dispatchAppRouterAction in various places
+        const possibleLocations = [
+          windowNext,
+          windowNext.__internals,
+          window,
+          (window as any).__NEXT_DATA__,
+        ];
+
+        for (const location of possibleLocations) {
+          if (!location) continue;
+          
+          // Look for properties that might be dispatch functions
+          for (const key in location) {
+            if (key.includes("dispatch") || key.includes("router") || key.includes("action")) {
+              const value = location[key];
+              if (typeof value === "function" && !value.__guardPatched) {
+                const originalFn = value.bind(location);
+                
+                location[key] = function (...args: any[]) {
+                  // Try to detect navigation actions
+                  const [action] = args;
+                  if (action && typeof action === "object") {
+                    if (action.type === ACTION_NAVIGATE) {
+                      debug(`Intercepted navigation action:`, action);
+                      
+                      // Extract navigation details
+                      const href = action.url?.href || action.url?.toString();
+                      const navigateType = action.navigateType || "push";
+                      
+                      if (href) {
+                        // Run guards synchronously (block the action)
+                        const guardsPromise = runGuards(href, navigateType);
+                        guardsPromise.then(shouldProceed => {
+                          if (shouldProceed) {
+                            debug(`Guards passed, dispatching action`);
+                            originalFn(...args);
+                          }
+                        });
+                        return;
+                      }
+                    }
+                  }
+                  
+                  // For non-navigation actions, proceed normally
+                  return originalFn(...args);
+                };
+                
+                location[key].__guardPatched = true;
+                debug(`Patched potential dispatch function at ${key}`);
+              }
+            }
+          }
+        }
+      };
+
+      findAndPatchDispatch();
+
+      // Method 4: Patch history methods as a fallback
+      const originalPushState = window.history.pushState.bind(window.history);
+      const originalReplaceState = window.history.replaceState.bind(window.history);
+
+      if (!window.history.pushState.__guardPatched) {
+        window.history.pushState = function (data: any, unused: string, url?: string | URL | null) {
+          if (url && !data?.__NA && !data?._N) {
+            // This is likely an external navigation, check guards
+            const href = url.toString();
+            runGuards(href, "push").then(shouldProceed => {
+              if (shouldProceed) {
+                originalPushState(data, unused, url);
+              }
+            });
+            return;
+          }
+          return originalPushState(data, unused, url);
+        };
+        window.history.pushState.__guardPatched = true;
+      }
+
+      if (!window.history.replaceState.__guardPatched) {
+        window.history.replaceState = function (data: any, unused: string, url?: string | URL | null) {
+          if (url && !data?.__NA && !data?._N) {
+            // This is likely an external navigation, check guards
+            const href = url.toString();
+            runGuards(href, "replace").then(shouldProceed => {
+              if (shouldProceed) {
+                originalReplaceState(data, unused, url);
+              }
+            });
+            return;
+          }
+          return originalReplaceState(data, unused, url);
+        };
+        window.history.replaceState.__guardPatched = true;
+      }
+
+      return true;
+    };
+
+    // Try to patch immediately
+    if (patchActionQueue()) {
+      isPatchedRef.current = true;
+      debug("Successfully patched global action queue system");
+    } else {
+      // If not ready, retry a few times
+      let attempts = 0;
+      const maxAttempts = 10;
+      const retryInterval = setInterval(() => {
+        attempts++;
+        if (patchActionQueue() || attempts >= maxAttempts) {
+          clearInterval(retryInterval);
+          if (attempts < maxAttempts) {
+            isPatchedRef.current = true;
+            debug("Successfully patched global action queue system after retries");
+          } else {
+            debug("Failed to patch global action queue system after max attempts");
+          }
+        }
+      }, 100);
+
+      return () => clearInterval(retryInterval);
+    }
+  }, [guardMapRef]);
+}
