@@ -1,6 +1,6 @@
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import { MutableRefObject, useContext } from "react";
-import { GuardDef, RenderedState } from "../types";
+import { GuardDef, NavigationGuardCallback, RenderedState } from "../types";
 import { DEBUG } from "../utils/debug";
 import { evaluateGuards } from "../utils/evaluateGuards";
 import {
@@ -17,9 +17,11 @@ const renderedStateRef: { current: RenderedState } = {
 
 export function useInterceptPopState({
   guardMapRef,
+  mockConfirmRef,
   disabled,
 }: {
   guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+  mockConfirmRef: MutableRefObject<NavigationGuardCallback | undefined>;
   disabled: boolean;
 }) {
   const pagesRouter = useContext(RouterContext);
@@ -31,7 +33,11 @@ export function useInterceptPopState({
     // https://github.com/vercel/next.js/blob/50b9966ba9377fd07a27e3f80aecd131fa346482/packages/next/src/client/components/app-router.tsx#L518
     const { writeState } = setupHistoryAugmentationOnce({ renderedStateRef });
 
-    const handlePopState = createHandlePopState(guardMapRef, writeState);
+    const handlePopState = createHandlePopState(
+      guardMapRef,
+      mockConfirmRef,
+      writeState
+    );
 
     if (pagesRouter) {
       pagesRouter.beforePopState(() => handlePopState(history.state));
@@ -60,6 +66,7 @@ export function useInterceptPopState({
 
 function createHandlePopState(
   guardMapRef: MutableRefObject<Map<string, GuardDef>>,
+  mockConfirmRef: MutableRefObject<NavigationGuardCallback | undefined>,
   writeState: () => void
 ) {
   let dispatchedState: unknown;
@@ -114,7 +121,10 @@ function createHandlePopState(
 
     // Wait for guard evaluation
     (async () => {
-      const ok = await evaluateGuards(guardMapRef, { to, type: "popstate" });
+      const ok = await evaluateGuards(guardMapRef, mockConfirmRef, {
+        to,
+        type: "popstate",
+      });
 
       if (!ok) {
         if (DEBUG) {

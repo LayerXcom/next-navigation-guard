@@ -7,11 +7,12 @@ import { debug } from "../utils/debug";
 // Should memoize callback func
 export function useNavigationGuard(options: NavigationGuardOptions) {
   const callbackId = useId();
-  const guardMapRef = useContext(NavigationGuardProviderContext);
-  if (!guardMapRef)
+  const ctx = useContext(NavigationGuardProviderContext);
+  if (!ctx)
     throw new Error(
       "useNavigationGuard must be used within a NavigationGuardProvider"
     );
+  const { guardMapRef } = ctx;
 
   const [pendingState, setPendingState] = useState<{
     resolve: (accepted: boolean) => void;

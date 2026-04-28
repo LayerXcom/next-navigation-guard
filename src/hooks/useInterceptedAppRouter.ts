@@ -3,14 +3,16 @@ import {
   AppRouterInstance,
 } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { MutableRefObject, useContext, useMemo } from "react";
-import { GuardDef } from "../types";
+import { GuardDef, NavigationGuardCallback } from "../types";
 import { debug } from "../utils/debug";
 import { evaluateGuards } from "../utils/evaluateGuards";
 
 export function useInterceptedAppRouter({
   guardMapRef,
+  mockConfirmRef,
 }: {
   guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+  mockConfirmRef: MutableRefObject<NavigationGuardCallback | undefined>;
 }) {
   const origRouter = useContext(AppRouterContext);
 
@@ -26,7 +28,10 @@ export function useInterceptedAppRouter({
       to: string,
       accepted: () => void
     ) => {
-      const ok = await evaluateGuards(guardMapRef, { to, type });
+      const ok = await evaluateGuards(guardMapRef, mockConfirmRef, {
+        to,
+        type,
+      });
       if (ok) accepted();
     };
 
@@ -43,5 +48,5 @@ export function useInterceptedAppRouter({
         guarded("refresh", location.href, () => origRouter.refresh(...args));
       },
     };
-  }, [origRouter, guardMapRef]);
+  }, [origRouter, guardMapRef, mockConfirmRef]);
 }

@@ -77,12 +77,26 @@ See working example in example/ directory and its `NavigationGuardToggle` compon
 
 ## Testing / Storybook
 
-Pass `disableForTesting` to `NavigationGuardProvider` so the library does not install any of its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation, no Next.js router context overrides). `useNavigationGuard` keeps registering normally, so the `enabled` predicate, the `confirm` callback, and the `active` / `accept` / `reject` returned by the hook all keep working — your component renders the same as in production without needing mocks for `window` or Next.js.
+Pass `disableForTesting` to `NavigationGuardProvider` and the library will skip its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation). The App Router / Pages Router context overrides remain in place, so navigation through Next.js routers (incl. mock routers in tests) still evaluates registered guards. `useNavigationGuard` keeps registering normally, so the `enabled` predicate, the `confirm` callback, and `active` / `accept` / `reject` work as in production.
 
 ```tsx
+// each guard's own confirm runs as in production
 render(
   <NavigationGuardProvider disableForTesting>
     <MyComponent />
   </NavigationGuardProvider>
 );
+```
+
+To bypass the confirmation UI entirely in tests (and assert which navigations were attempted), pass `mockConfirm`. It replaces every registered guard's `confirm` during evaluation; per-guard `enabled` predicates still run.
+
+```tsx
+const mockConfirm = jest.fn().mockResolvedValue(true);
+render(
+  <NavigationGuardProvider disableForTesting={{ mockConfirm }}>
+    <MyComponent />
+  </NavigationGuardProvider>
+);
+// drive navigation through your mock router…
+expect(mockConfirm).toHaveBeenCalledWith({ to: "/foo", type: "push" });
 ```

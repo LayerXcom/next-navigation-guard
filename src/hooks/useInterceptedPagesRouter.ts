@@ -2,13 +2,15 @@ import { NextRouter } from "next/dist/client/router";
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import { Url } from "next/dist/shared/lib/router/router";
 import { MutableRefObject, useContext, useMemo } from "react";
-import { GuardDef } from "../types";
+import { GuardDef, NavigationGuardCallback } from "../types";
 import { evaluateGuards } from "../utils/evaluateGuards";
 
 export function useInterceptedPagesRouter({
   guardMapRef,
+  mockConfirmRef,
 }: {
   guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+  mockConfirmRef: MutableRefObject<NavigationGuardCallback | undefined>;
 }) {
   const origRouter = useContext(RouterContext);
 
@@ -21,7 +23,10 @@ export function useInterceptedPagesRouter({
       accepted: () => Promise<boolean>
     ): Promise<boolean> => {
       const to = typeof toUrl === "string" ? toUrl : toUrl.href ?? "";
-      const ok = await evaluateGuards(guardMapRef, { to, type });
+      const ok = await evaluateGuards(guardMapRef, mockConfirmRef, {
+        to,
+        type,
+      });
       if (!ok) return false;
       return await accepted();
     };
@@ -43,5 +48,5 @@ export function useInterceptedPagesRouter({
         });
       },
     };
-  }, [origRouter, guardMapRef]);
+  }, [origRouter, guardMapRef, mockConfirmRef]);
 }

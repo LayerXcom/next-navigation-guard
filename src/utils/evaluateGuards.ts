@@ -1,19 +1,28 @@
 import { MutableRefObject } from "react";
-import { GuardDef, NavigationGuardParams } from "../types";
+import {
+  GuardDef,
+  NavigationGuardCallback,
+  NavigationGuardParams,
+} from "../types";
 import { debug } from "./debug";
 
 export async function evaluateGuards(
   guardMapRef: MutableRefObject<Map<string, GuardDef>>,
+  mockConfirmRef: MutableRefObject<NavigationGuardCallback | undefined>,
   params: NavigationGuardParams
 ): Promise<boolean> {
   debug(`Navigation attempt: ${params.type} to ${params.to}`);
 
+  const mockConfirm = mockConfirmRef.current;
+
   for (const { enabled, callback } of guardMapRef.current.values()) {
     if (!enabled(params)) continue;
 
-    debug(`Calling guard callback`);
-    const confirm = await callback(params);
-    debug(`Guard callback returned: ${confirm}`);
+    const confirmFn = mockConfirm ?? callback;
+    if (mockConfirm) debug(`Calling mockConfirm`);
+    else debug(`Calling guard callback`);
+    const confirm = await confirmFn(params);
+    debug(`Confirm returned: ${confirm}`);
     if (!confirm) {
       debug(`Navigation blocked`);
       return false;

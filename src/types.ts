@@ -5,27 +5,31 @@ export interface NavigationGuardOptions {
 }
 
 /**
- * When set on `NavigationGuardProvider`, the library does not touch any host
- * environment for navigation interception. Intended for unit tests and
- * storybook where mocking `window`/`history`/Next.js internals is undesired.
+ * When set on `NavigationGuardProvider`, the library skips its host-environment
+ * hooks. Intended for unit tests and storybook where touching real `window` /
+ * `history` / `document` is undesired.
  *
- * What it disables (library-side hooks into the environment):
- * - registering `popstate`, `beforeunload`, and capture-phase `click` listeners
- * - augmenting `window.history` (token / stack-index injection)
- * - overriding Next.js App Router and Pages Router contexts
+ * What it disables (host-environment side):
+ * - `popstate`, `beforeunload`, and capture-phase `click` listeners
+ * - `window.history` augmentation (token / stack-index injection)
  * - the click-link interceptor that ships for Next.js 15.3+
  *
  * What it intentionally leaves alone (user component contract):
  * - the `enabled` predicate passed to `useNavigationGuard`
  * - the `confirm` callback
  * - the `active` / `accept` / `reject` state used by custom confirmation UIs
+ * - the App Router / Pages Router `RouterContext` overrides — navigation
+ *   driven through Next.js routers (including mock routers in tests) still
+ *   evaluates registered guards
  *
- * In other words: `useNavigationGuard` keeps registering and behaving as a
- * normal hook; only the library's bridge to the real navigation events is
- * inert. Tests that need to drive guard evaluation should do so through the
- * user component's own surface (e.g. mock `confirm` and assert on `active`).
+ * Two forms:
+ * - `true`: each guard's own `confirm` runs as in production.
+ * - `{ mockConfirm }`: the supplied callback replaces every guard's `confirm`
+ *   during evaluation, so tests can drive accept/reject deterministically
+ *   (e.g. `jest.fn().mockResolvedValue(true)`) without rendering the
+ *   confirmation UI. Per-guard `enabled` predicates are still evaluated.
  */
-export type DisableForTesting = boolean;
+export type DisableForTesting = boolean | { mockConfirm: NavigationGuardCallback };
 
 export interface NavigationGuardParams {
   to: string;

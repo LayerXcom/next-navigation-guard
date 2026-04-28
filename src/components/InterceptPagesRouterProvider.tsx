@@ -3,16 +3,21 @@
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import React, { MutableRefObject } from "react";
 import { useInterceptedPagesRouter } from "../hooks/useInterceptedPagesRouter";
-import { GuardDef } from "../types";
+import { GuardDef, NavigationGuardCallback } from "../types";
 
 export function InterceptPagesRouterProvider({
   guardMapRef,
+  mockConfirmRef,
   children,
 }: {
   guardMapRef: MutableRefObject<Map<string, GuardDef>>;
+  mockConfirmRef: MutableRefObject<NavigationGuardCallback | undefined>;
   children: React.ReactNode;
 }) {
-  const interceptedRouter = useInterceptedPagesRouter({ guardMapRef });
+  const interceptedRouter = useInterceptedPagesRouter({
+    guardMapRef,
+    mockConfirmRef,
+  });
   if (!interceptedRouter) {
     return <>{children}</>;
   }
