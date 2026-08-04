@@ -75,6 +75,12 @@ pnpm install next-navigation-guard
 
 See working example in example/ directory and its `NavigationGuardToggle` component.
 
+## Limitations
+
+Calls made directly through `window.history.pushState()` or
+`window.history.replaceState()` do not invoke the navigation guard. If you use
+either method directly, confirm the navigation yourself before calling it.
+
 ## Testing / Storybook
 
 Pass `disableForTesting` to `NavigationGuardProvider` and the library will skip its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation). The App Router / Pages Router context overrides remain in place, so navigation through Next.js routers (incl. mock routers in tests) still evaluates registered guards. `useNavigationGuard` keeps registering normally, so the `enabled` predicate, the `confirm` callback, and `active` / `accept` / `reject` work as in production.
