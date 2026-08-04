@@ -4,6 +4,8 @@ import { RefreshButton } from "./RefreshButton";
 import { NavigationGuardToggle } from "./NavigationGuardToggle";
 import { BackButton } from "./BackButton";
 import { ForwardButton } from "./ForwardButton";
+import { ReplaceQueryButton } from "./ReplaceQueryButton";
+import { PushStateButton } from "./PushStateButton";
 
 export function SharedPage({
   current,
@@ -62,6 +64,12 @@ export function SharedPage({
           </span>
           <span>
             <ForwardButton />
+          </span>
+          <span>
+            <ReplaceQueryButton />
+          </span>
+          <span>
+            <PushStateButton />
           </span>
         </div>
       </main>
