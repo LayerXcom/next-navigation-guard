@@ -81,6 +81,12 @@ Calls made directly through `window.history.pushState()` or
 `window.history.replaceState()` do not invoke the navigation guard. If you use
 either method directly, confirm the navigation yourself before calling it.
 
+To support App Router navigation in Next.js 15.2 and later, the provider adds a
+capturing-phase `click` handler for eligible internal links. While a guard is
+enabled, that handler prevents the original click and stops its propagation
+while the confirmation is pending; code that depends on that click's normal
+propagation order may therefore need to account for it.
+
 ## Testing / Storybook
 
 Pass `disableForTesting` to `NavigationGuardProvider` and the library will skip its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation). The App Router / Pages Router context overrides remain in place, so navigation through Next.js routers (incl. mock routers in tests) still evaluates registered guards. `useNavigationGuard` keeps registering normally, so the `enabled` predicate, the `confirm` callback, and `active` / `accept` / `reject` work as in production.
