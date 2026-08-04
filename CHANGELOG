@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-04-28
+## [0.3.0] - 2026-08-04
 
 ### Added
 
 - Add `disableForTesting` prop to `NavigationGuardProvider`. When set, the library skips its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation), but still overrides Next.js's App Router and Pages Router contexts so navigation through Next.js routers (including mock routers in tests) keeps evaluating registered guards. `useNavigationGuard` continues to register normally so `enabled` / `confirm` / `active` / `accept` / `reject` work as in production. Pass `{ mockConfirm }` to additionally replace every guard's `confirm` during evaluation, useful for asserting on navigation attempts without rendering the confirmation UI.
-- Support Next.js 16 as peer dependency and add E2E CI targets for v16.0, v16.1, and v16.2.
+- Support Next.js 16.0 through 16.3 as a peer dependency and add E2E CI targets for v16.0 through v16.3.
+
+### Changed
+
+- Document the limitation that direct `window.history.pushState()` and `window.history.replaceState()` calls must be confirmed by the caller.
+- Document the capturing-phase click handler used to support App Router navigation in Next.js 15.2 and later.
 
 ### Fixed
 
