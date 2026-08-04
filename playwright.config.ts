@@ -29,11 +29,9 @@ export default defineConfig({
     },
   ],
 
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: `cd example && PORT=${PORT} pnpm dev`,
-        port: Number(PORT),
-        reuseExistingServer: false,
-      },
+  webServer: {
+    command: `pnpm --dir example build && PORT=${PORT} pnpm --dir example start`,
+    port: Number(PORT),
+    reuseExistingServer: true,
+  },
 });
