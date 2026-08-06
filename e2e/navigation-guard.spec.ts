@@ -373,7 +373,7 @@ routers.forEach(({ name, routerType, startUrl, linkIndex, basePath }) => {
       await expect(page).toHaveURL(`${basePath}/page1?query=second`);
     });
 
-    test("should guard query parameter changes through history.pushState()", async ({
+    test("should guard page changes through history.pushState()", async ({
       page,
     }) => {
       await page.goto(`${startUrl}?query=first`);
@@ -395,10 +395,10 @@ routers.forEach(({ name, routerType, startUrl, linkIndex, basePath }) => {
         });
       });
 
-      await page.getByRole("button", { name: "history.pushState() query" }).click();
+      await page.getByRole("button", { name: "history.pushState() page" }).click();
       await dialogPromise;
 
-      const pushedPath = `${basePath}/page1?query=first&pushState=second`;
+      const pushedPath = `${basePath}/page3?query=first&pushState=second`;
       await expect(page.getByText(`pushState path: ${pushedPath}`)).toBeVisible();
       await expect(page).toHaveURL(pushedPath);
     });
