@@ -77,9 +77,21 @@ See working example in example/ directory and its `NavigationGuardToggle` compon
 
 ## Limitations
 
+### Browser-controlled navigations
+
+Custom dialog components can only be shown for client-side navigations. When
+the browser fires `beforeunload` (for example, on page reload, tab close, or
+leaving the page), browsers do not allow asynchronous work or custom dialogs.
+In those cases this library can only request the browser's built-in confirmation
+dialog; its text and appearance cannot be customized.
+
+### Navigation paths outside the guard
+
 Calls made directly through `window.history.pushState()` or
 `window.history.replaceState()` do not invoke the navigation guard. If you use
 either method directly, confirm the navigation yourself before calling it.
+
+### App Router link interception
 
 To support App Router navigation in Next.js 15.2 and later, the provider adds a
 capturing-phase `click` handler for eligible internal links. While a guard is
