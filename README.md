@@ -99,6 +99,15 @@ enabled, that handler prevents the original click and stops its propagation
 while the confirmation is pending; code that depends on that click's normal
 propagation order may therefore need to account for it.
 
+### Next.js 16.2 App Router query-only replacements
+
+Next.js 16.2 has an upstream App Router regression: after an asynchronous
+navigation guard is accepted, `router.replace()` that changes only the query
+string may be dropped. This library cannot safely work around it without
+replacing Next.js router semantics with the native History API. The issue is
+resolved in Next.js 16.3.0; use Next.js 16.1.x or 16.3.0 and later when this
+navigation pattern is required.
+
 ## Testing / Storybook
 
 Pass `disableForTesting` to `NavigationGuardProvider` and the library will skip its host-environment hooks (no `popstate` / `beforeunload` / `click` listeners, no `window.history` augmentation). The App Router / Pages Router context overrides remain in place, so navigation through Next.js routers (incl. mock routers in tests) still evaluates registered guards. `useNavigationGuard` keeps registering normally, so the `enabled` predicate, the `confirm` callback, and `active` / `accept` / `reject` work as in production.

@@ -1,5 +1,9 @@
 import { test, expect, Page } from "@playwright/test";
 
+const exampleNextVersion = require("../example/package.json").dependencies
+  .next as string;
+const isNext16_2 = exampleNextVersion.startsWith("16.2.");
+
 // Helper function to wait for and handle beforeunload dialog
 async function waitForBeforeUnloadDialog(
   page: Page,
@@ -342,6 +346,11 @@ routers.forEach(({ name, routerType, startUrl, linkIndex, basePath }) => {
     test("should guard query parameter changes through router.replace()", async ({
       page,
     }) => {
+      test.skip(
+        routerType === "appRouter" && isNext16_2,
+        "Next.js 16.2 App Router drops guarded query-only router.replace() navigations"
+      );
+
       await page.goto(`${startUrl}?query=first`);
       await expect(
         page.locator(`text=Current Page: ${routerType} 1`)
