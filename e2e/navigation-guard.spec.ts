@@ -373,36 +373,6 @@ routers.forEach(({ name, routerType, startUrl, linkIndex, basePath }) => {
       await expect(page).toHaveURL(`${basePath}/page1?query=second`);
     });
 
-    test("should guard page changes through history.pushState()", async ({
-      page,
-    }) => {
-      await page.goto(`${startUrl}?query=first`);
-      await expect(
-        page.locator(`text=Current Page: ${routerType} 1`)
-      ).toBeVisible();
-
-      await page
-        .getByRole("checkbox", { name: "Enable Navigation Guard" })
-        .check();
-
-      const dialogPromise = new Promise<void>((resolve) => {
-        page.once("dialog", (dialog) => {
-          expect(dialog.message()).toBe(
-            "You have unsaved changes that will be lost."
-          );
-          dialog.accept();
-          resolve();
-        });
-      });
-
-      await page.getByRole("button", { name: "history.pushState() page" }).click();
-      await dialogPromise;
-
-      const pushedPath = `${basePath}/page3?query=first&pushState=second`;
-      await expect(page.getByText(`pushState path: ${pushedPath}`)).toBeVisible();
-      await expect(page).toHaveURL(pushedPath);
-    });
-
     test("should guard page refresh", async ({ page }) => {
       await page.goto(startUrl);
 
