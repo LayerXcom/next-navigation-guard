@@ -26,7 +26,6 @@ export function useInterceptLinkClicks({
   useIsomorphicLayoutEffect(() => {
     if (disabled) return;
     if (typeof window === 'undefined' || isSetup.current) return;
-    isSetup.current = true;
 
     // If AppRouterContext doesn't exist (old Next.js), skip
     if (!AppRouterContext) {
@@ -61,6 +60,7 @@ export function useInterceptLinkClicks({
       return;
     }
 
+    isSetup.current = true;
     debug('Setting up link click interceptor');
 
     // Function to handle link clicks
@@ -195,6 +195,7 @@ export function useInterceptLinkClicks({
       debug('Cleaning up link click interceptor');
       document.removeEventListener('click', handleLinkClick, true);
       observer.disconnect();
+      isSetup.current = false;
     };
   }, [guardMapRef, disabled]);
 }
