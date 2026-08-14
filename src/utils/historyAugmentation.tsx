@@ -18,7 +18,10 @@ export function setupHistoryAugmentationOnce({
 }: {
   renderedStateRef: { current: RenderedState };
 }): { writeState: () => void } {
-  if (setupDone) return { writeState };
+  if (
+    setupDone
+    || typeof window === 'undefined'
+  ) return { writeState };
 
   if (DEBUG) console.log("setupHistoryAugmentationOnce: setup");
 
@@ -32,9 +35,9 @@ export function setupHistoryAugmentationOnce({
   }
 
   renderedStateRef.current.index =
-    parseInt(window.history.state.__next_navigation_guard_stack_index) || 0;
+    parseInt(window.history.state?.__next_navigation_guard_stack_index) || 0;
   renderedStateRef.current.token =
-    String(window.history.state.__next_navigation_guard_token ?? "") ||
+    String(window.history.state?.__next_navigation_guard_token ?? "") ||
     newToken();
 
   if (DEBUG)
@@ -63,8 +66,8 @@ export function setupHistoryAugmentationOnce({
   };
 
   if (
-    window.history.state.__next_navigation_guard_stack_index == null ||
-    window.history.state.__next_navigation_guard_token == null
+    typeof window.history.state?.__next_navigation_guard_stack_index !== 'number' ||
+    typeof window.history.state?.__next_navigation_guard_token !== 'string'
   ) {
     writeState();
   }
