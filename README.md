@@ -73,6 +73,49 @@ pnpm install next-navigation-guard
   )
   ```
 
+  Note that `navGuard.active` is only set for client-side navigation. If the user attempts to close the tab or
+  manually navigates to a new URL, the navigation guard will fallback to the browser's default confirmation
+  dialog. This is an inherent limitation of modern browsers.
+
+- Hooking into the library's underlying state
+
+  This is an advanced use-case if, for example, you have a special routing setup that prevents you from using
+  the built-in NextJS router or Link component.
+
+  ```tsx
+  import { NavigationGuardProviderContext } from 'next-navigation-guard';
+
+  function SpecialLink({ href }: { href: string }) {
+    const guardMapRef = useContext(NavigationGuardProivderContext);
+    let guardNavigation: React.MouseEventHandler<HTMLAnchorElement> | undefined = undefined;
+  
+    for (const guard of guardMapRef.current.values()) {
+      const { enabled, callback } = guard;
+      if (!enabled({ to: href, type: 'push' })) continue;
+  
+      guardNavigation = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+  
+        let confirmed = callback({ to: href, type: 'push' });
+        if (typeof confirmed === 'boolean') {
+          confirmed = Promise.resolve(confirmed);
+        }
+  
+        void confirmed.then((confirmed) => {
+          if (!confirmed) return;
+  
+          guard.enabled = () => false;
+          window.location.href = href;
+        });
+      };
+      break;
+    }
+  
+    return <a href="/" onClick={guardNavigation}>Click Here</a>;
+  }
+  ```
+
 See working example in example/ directory and its `NavigationGuardToggle` component.
 
 ## Limitations
