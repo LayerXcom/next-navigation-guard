@@ -1,4 +1,5 @@
 import { NextRouter } from "next/dist/client/router";
+import { resolveHref } from "next/dist/client/resolve-href";
 import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import { Url } from "next/dist/shared/lib/router/router";
 import { MutableRefObject, useContext, useMemo } from "react";
@@ -20,9 +21,22 @@ export function useInterceptedPagesRouter({
     const guarded = async (
       type: "push" | "replace" | "refresh",
       toUrl: Url,
-      accepted: () => Promise<boolean>
+      accepted: () => Promise<boolean>,
+      as?: Url
     ): Promise<boolean> => {
-      const to = typeof toUrl === "string" ? toUrl : toUrl.href ?? "";
+      // An object href such as { pathname: "/posts/[id]", query } has no `href`, so resolve
+      // it to the URL the browser will show, as Next.js does for Link. Strings pass through.
+      let to: string;
+      if (typeof toUrl === "string") {
+        to = toUrl;
+      } else {
+        const [resolvedHref, resolvedAs] = resolveHref(
+          origRouter,
+          as ?? toUrl,
+          true
+        );
+        to = resolvedAs || resolvedHref;
+      }
       const ok = await evaluateGuards(guardMapRef, mockConfirmRef, {
         to,
         type,
@@ -34,11 +48,19 @@ export function useInterceptedPagesRouter({
     return {
       ...origRouter,
       push: (href, ...args) => {
-        return guarded("push", href, () => origRouter.push(href, ...args));
+        return guarded(
+          "push",
+          href,
+          () => origRouter.push(href, ...args),
+          args[0]
+        );
       },
       replace: (href, ...args) => {
-        return guarded("replace", href, () =>
-          origRouter.replace(href, ...args)
+        return guarded(
+          "replace",
+          href,
+          () => origRouter.replace(href, ...args),
+          args[0]
         );
       },
       reload: (...args) => {
