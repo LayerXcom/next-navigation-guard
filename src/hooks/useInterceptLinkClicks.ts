@@ -1,5 +1,6 @@
 import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 import { MutableRefObject, useRef, useContext } from "react";
+import { RouterContext } from "next/dist/shared/lib/router-context.shared-runtime";
 import { GuardDef } from "../types";
 import { debug } from "../utils/debug";
 
@@ -22,6 +23,7 @@ export function useInterceptLinkClicks({
   const isSetup = useRef(false);
   const needsInterceptor = useRef<boolean | null>(null);
   const appRouter = AppRouterContext ? useContext(AppRouterContext) : null;
+  const isPagesRouter = useContext(RouterContext) != null;
 
   useIsomorphicLayoutEffect(() => {
     if (disabled) return;
@@ -34,8 +36,10 @@ export function useInterceptLinkClicks({
     }
 
     // Only use link interceptor if we're in App Router mode
-    // In Pages Router, the router context interception works fine
-    if (!appRouter) {
+    // In Pages Router, the router context interception works fine. Next.js also provides
+    // AppRouterContext there (a compatibility adapter), so check for the Pages Router context
+    // too: a document-level listener would only swallow clicks on elements inside links.
+    if (!appRouter || isPagesRouter) {
       debug('Not in App Router context, skipping link interceptor');
       return;
     }
@@ -197,5 +201,5 @@ export function useInterceptLinkClicks({
       observer.disconnect();
       isSetup.current = false;
     };
-  }, [guardMapRef, disabled]);
+  }, [guardMapRef, disabled, isPagesRouter]);
 }
