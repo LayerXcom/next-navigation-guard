@@ -36,7 +36,7 @@ export function useInterceptPopState({
     const handlePopState = createHandlePopState(
       guardMapRef,
       mockConfirmRef,
-      writeState
+      writeState,
     );
 
     if (pagesRouter) {
@@ -67,19 +67,19 @@ export function useInterceptPopState({
 function createHandlePopState(
   guardMapRef: MutableRefObject<Map<string, GuardDef>>,
   mockConfirmRef: MutableRefObject<NavigationGuardCallback | undefined>,
-  writeState: () => void
+  writeState: () => void,
 ) {
   let dispatchedState: unknown;
 
   return (nextState: any = {}): boolean => {
-    const token: string | undefined = nextState.__next_navigation_guard_token;
+    const token: string | undefined = nextState?.__next_navigation_guard_token;
     const nextIndex: number =
-      Number(nextState.__next_navigation_guard_stack_index) || 0;
+      Number(nextState?.__next_navigation_guard_stack_index) || 0;
 
     if (!token || token !== renderedStateRef.current.token) {
       if (DEBUG)
         console.log(
-          `useInterceptPopState(): token mismatch, skip handling (current: ${renderedStateRef.current.token}, next: ${token})`
+          `useInterceptPopState(): token mismatch, skip handling (current: ${renderedStateRef.current.token}, next: ${token})`,
         );
       renderedStateRef.current.token = token || newToken();
       renderedStateRef.current.index = token ? nextIndex : 0;
@@ -92,14 +92,14 @@ function createHandlePopState(
     if (delta === 0) {
       if (DEBUG)
         console.log(
-          `useInterceptPopState(): discard popstate event: delta is 0`
+          `useInterceptPopState(): discard popstate event: delta is 0`,
         );
       return false;
     }
 
     if (DEBUG)
       console.log(
-        `useInterceptPopState(): __next_navigation_guard_stack_index is ${nextState.__next_navigation_guard_stack_index}`
+        `useInterceptPopState(): __next_navigation_guard_stack_index is ${nextState.__next_navigation_guard_stack_index}`,
       );
 
     const to = location.pathname + location.search;
@@ -107,7 +107,7 @@ function createHandlePopState(
     if (nextState === dispatchedState || guardMapRef.current.size === 0) {
       if (DEBUG)
         console.log(
-          `useInterceptPopState(): Accept popstate event, index: ${nextIndex}`
+          `useInterceptPopState(): Accept popstate event, index: ${nextIndex}`,
         );
       dispatchedState = null;
       renderedStateRef.current.index = nextIndex;
@@ -116,7 +116,7 @@ function createHandlePopState(
 
     if (DEBUG)
       console.log(
-        `useInterceptPopState(): Suspend popstate event, index: ${nextIndex}`
+        `useInterceptPopState(): Suspend popstate event, index: ${nextIndex}`,
       );
 
     // Wait for guard evaluation
@@ -131,7 +131,7 @@ function createHandlePopState(
           console.log(
             `useInterceptPopState(): Cancel popstate event, go(): ${
               renderedStateRef.current.index
-            } - ${nextIndex} = ${-delta}`
+            } - ${nextIndex} = ${-delta}`,
           );
         }
         if (delta !== 0) {
@@ -143,7 +143,7 @@ function createHandlePopState(
 
       if (DEBUG) {
         console.log(
-          `useInterceptPopState(): Accept popstate event, ${nextIndex}`
+          `useInterceptPopState(): Accept popstate event, ${nextIndex}`,
         );
       }
       // accept

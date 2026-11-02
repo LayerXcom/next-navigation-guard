@@ -31,21 +31,21 @@ export function setupHistoryAugmentationOnce({
     };
   }
 
+  const initialState = window.history.state ?? {};
   renderedStateRef.current.index =
-    parseInt(window.history.state.__next_navigation_guard_stack_index) || 0;
+    parseInt(initialState.__next_navigation_guard_stack_index) || 0;
   renderedStateRef.current.token =
-    String(window.history.state.__next_navigation_guard_token ?? "") ||
-    newToken();
+    String(initialState.__next_navigation_guard_token ?? "") || newToken();
 
   if (DEBUG)
     console.log(
-      `setupHistoryAugmentationOnce: initial currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`
+      `setupHistoryAugmentationOnce: initial currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`,
     );
 
   writeState = () => {
     if (DEBUG)
       console.log(
-        `setupHistoryAugmentationOnce: write state by replaceState(): currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`
+        `setupHistoryAugmentationOnce: write state by replaceState(): currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`,
       );
 
     const modifiedState = {
@@ -58,7 +58,7 @@ export function setupHistoryAugmentationOnce({
       window.history,
       modifiedState,
       "",
-      window.location.href
+      window.location.href,
     );
   };
 
@@ -80,7 +80,7 @@ export function setupHistoryAugmentationOnce({
 
     if (DEBUG)
       console.log(
-        `setupHistoryAugmentationOnce: push: currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`
+        `setupHistoryAugmentationOnce: push: currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`,
       );
 
     const modifiedState = {
@@ -100,7 +100,7 @@ export function setupHistoryAugmentationOnce({
 
     if (DEBUG)
       console.log(
-        `setupHistoryAugmentationOnce: replace: currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`
+        `setupHistoryAugmentationOnce: replace: currentIndex is ${renderedStateRef.current.index}, token is ${renderedStateRef.current.token}`,
       );
 
     const modifiedState = {
