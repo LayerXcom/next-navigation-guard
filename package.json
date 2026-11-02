@@ -1,5 +1,5 @@
 {
-  "name": "next-navigation-guard",
+  "name": "@esgdatapoint/next-navigation-guard",
   "version": "0.3.0",
   "description": "Navigation Guard for Next.js App Router and Pages Router.",
   "main": "./dist/index.js",
