@@ -2,6 +2,10 @@ import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 import { MutableRefObject, useRef, useContext } from "react";
 import { GuardDef } from "../types";
 import { debug } from "../utils/debug";
+import {
+  clearLeaveAcceptedOnSettle,
+  markLeaveAccepted,
+} from "../utils/leaveAcceptance";
 
 // Try to import AppRouterContext, but don't fail if it doesn't exist
 let AppRouterContext: any;
@@ -147,13 +151,14 @@ export function useInterceptLinkClicks({
 
       if (shouldNavigate) {
         debug('All guards passed, navigating programmatically');
+        const acceptance = markLeaveAccepted();
         // Navigate programmatically since we prevented the default
         const router = (window as any).next?.router;
         if (router) {
           if (navigateType === 'replace') {
-            router.replace(href);
+            clearLeaveAcceptedOnSettle(acceptance, router.replace(href));
           } else {
-            router.push(href);
+            clearLeaveAcceptedOnSettle(acceptance, router.push(href));
           }
         } else {
           // Fallback to location navigation

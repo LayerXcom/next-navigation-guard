@@ -6,6 +6,10 @@ import { MutableRefObject, useContext, useMemo } from "react";
 import { GuardDef, NavigationGuardCallback } from "../types";
 import { debug } from "../utils/debug";
 import { evaluateGuards } from "../utils/evaluateGuards";
+import {
+  clearLeaveAccepted,
+  markLeaveAccepted,
+} from "../utils/leaveAcceptance";
 
 export function useInterceptedAppRouter({
   guardMapRef,
@@ -32,7 +36,17 @@ export function useInterceptedAppRouter({
         to,
         type,
       });
-      if (ok) accepted();
+      if (!ok) return;
+      // router.refresh() neither unloads the page nor commits a history entry.
+      // For push / replace, the record is cleared when the navigation is
+      // committed (pushState / replaceState) or consumed on beforeunload.
+      const acceptance = type === "refresh" ? null : markLeaveAccepted();
+      try {
+        accepted();
+      } catch (e) {
+        if (acceptance) clearLeaveAccepted(acceptance);
+        throw e;
+      }
     };
 
     return {

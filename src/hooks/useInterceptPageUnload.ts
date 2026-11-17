@@ -1,5 +1,6 @@
 import { MutableRefObject } from "react";
 import { GuardDef } from "../types";
+import { consumeLeaveAccepted } from "../utils/leaveAcceptance";
 import { useIsomorphicLayoutEffect } from "./useIsomorphicLayoutEffect";
 
 export function useInterceptPageUnload({
@@ -13,6 +14,9 @@ export function useInterceptPageUnload({
     if (disabled) return;
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // The user has already accepted this navigation and it turned into a full page load.
+      if (consumeLeaveAccepted(location.href)) return;
+
       for (const def of guardMapRef.current.values()) {
         // We does not support confirm() on beforeunload as
         // we cannot wait for async Promise resolution on beforeunload.
