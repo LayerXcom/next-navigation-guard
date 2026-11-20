@@ -50,6 +50,16 @@ export function SharedPage({
               </li>
             </ol>
           </div>
+          <div>
+            <div style={{ marginBottom: 16 }}>Other</div>
+            <ol>
+              <li>
+                <Link href="/download" prefetch={false}>
+                  Download
+                </Link>
+              </li>
+            </ol>
+          </div>
         </div>
 
         <div>

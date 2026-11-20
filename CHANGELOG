@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Do not show the `beforeunload` warning again after the user has accepted a guarded navigation that turns into a full page load (e.g. navigating between App Router and Pages Router, or to a path not handled by Next.js) ([#69](https://github.com/LayerXcom/next-navigation-guard/issues/69)). The page is still guarded when the accepted navigation does not complete.
+
 ## [0.3.0] - 2026-08-04
 
 ### Added

@@ -499,3 +499,167 @@ routers.forEach(({ name, routerType, startUrl, linkIndex, basePath }) => {
     });
   });
 });
+
+// Records dialogs by type. Accepts confirm() and dismisses beforeunload so that
+// an unexpected beforeunload cancels the navigation.
+function recordDialogs(page: Page) {
+  const counts = { confirm: 0, beforeunload: 0 };
+  page.on("dialog", (dialog) => {
+    if (dialog.type() === "beforeunload") {
+      counts.beforeunload++;
+      dialog.dismiss();
+    } else {
+      if (dialog.type() === "confirm") counts.confirm++;
+      dialog.accept();
+    }
+  });
+  return counts;
+}
+
+async function enableGuard(page: Page) {
+  await page.getByRole("checkbox", { name: "Enable Navigation Guard" }).check();
+}
+
+async function reloadExpectingBeforeUnload(
+  page: Page,
+  counts: { beforeunload: number }
+) {
+  const before = counts.beforeunload;
+  await page.evaluate(() => {
+    setTimeout(() => location.reload(), 0);
+  });
+  await expect.poll(() => counts.beforeunload).toBe(before + 1);
+}
+
+const crossRouterCases = [
+  {
+    name: "App Router to Pages Router",
+    startUrl: "/page1",
+    startText: "Current Page: appRouter 1",
+    otherLinkIndex: 1,
+    otherUrl: "/pages-router/page1",
+    otherText: "Current Page: pagesRouter 1",
+    spaLinkIndex: 0,
+    spaUrl: "/page2",
+    spaText: "Current Page: appRouter 2",
+  },
+  {
+    name: "Pages Router to App Router",
+    startUrl: "/pages-router/page1",
+    startText: "Current Page: pagesRouter 1",
+    otherLinkIndex: 0,
+    otherUrl: "/page1",
+    otherText: "Current Page: appRouter 1",
+    spaLinkIndex: 1,
+    spaUrl: "/pages-router/page2",
+    spaText: "Current Page: pagesRouter 2",
+  },
+];
+
+crossRouterCases.forEach((c) => {
+  test.describe(`Navigation Guard - full page load (${c.name})`, () => {
+    test("should ask only once when the accepted navigation becomes a full page load", async ({
+      page,
+    }) => {
+      await page.goto(c.startUrl);
+      await expect(page.locator(`text=${c.startText}`)).toBeVisible();
+      const counts = recordDialogs(page);
+      await enableGuard(page);
+
+      await page
+        .getByRole("link", { name: "Page1" })
+        .nth(c.otherLinkIndex)
+        .click();
+
+      await expect(page.locator(`text=${c.otherText}`)).toBeVisible();
+      await expect(page).toHaveURL(c.otherUrl);
+      expect(counts).toEqual({ confirm: 1, beforeunload: 0 });
+    });
+
+    test("should stay without beforeunload when the confirmation is cancelled", async ({
+      page,
+    }) => {
+      await page.goto(c.startUrl);
+      await expect(page.locator(`text=${c.startText}`)).toBeVisible();
+      const counts = { confirm: 0, beforeunload: 0 };
+      page.on("dialog", (dialog) => {
+        if (dialog.type() === "confirm") counts.confirm++;
+        if (dialog.type() === "beforeunload") counts.beforeunload++;
+        dialog.dismiss();
+      });
+      await enableGuard(page);
+
+      await page
+        .getByRole("link", { name: "Page1" })
+        .nth(c.otherLinkIndex)
+        .click();
+
+      await page.waitForTimeout(1000);
+      await expect(page.locator(`text=${c.startText}`)).toBeVisible();
+      await expect(page).toHaveURL(c.startUrl);
+      expect(counts).toEqual({ confirm: 1, beforeunload: 0 });
+    });
+
+    test("should warn on reload after the accepted full page load is cancelled", async ({
+      page,
+    }) => {
+      await page.goto(c.startUrl);
+      await expect(page.locator(`text=${c.startText}`)).toBeVisible();
+      const counts = recordDialogs(page);
+      await enableGuard(page);
+
+      // The response is a download, so the full page load is cancelled and the page stays.
+      const download = page.waitForEvent("download");
+      await page.getByRole("link", { name: "Download" }).click();
+      await download;
+      await page.waitForTimeout(500);
+      await expect(page.locator(`text=${c.startText}`)).toBeVisible();
+      await expect(page).toHaveURL(c.startUrl);
+      expect(counts).toEqual({ confirm: 1, beforeunload: 0 });
+
+      await reloadExpectingBeforeUnload(page, counts);
+      await page.waitForTimeout(500);
+      await expect(page.locator(`text=${c.startText}`)).toBeVisible();
+    });
+
+    test("should warn on reload after the accepted navigation is committed", async ({
+      page,
+    }) => {
+      await page.goto(c.startUrl);
+      await expect(page.locator(`text=${c.startText}`)).toBeVisible();
+      const counts = recordDialogs(page);
+      await enableGuard(page);
+
+      await page
+        .getByRole("link", { name: "Page2" })
+        .nth(c.spaLinkIndex)
+        .click();
+      await expect(page.locator(`text=${c.spaText}`)).toBeVisible();
+      await expect(page).toHaveURL(c.spaUrl);
+      expect(counts).toEqual({ confirm: 1, beforeunload: 0 });
+
+      await enableGuard(page);
+      await reloadExpectingBeforeUnload(page, counts);
+      await expect(page.locator(`text=${c.spaText}`)).toBeVisible();
+    });
+  });
+});
+
+test.describe("Navigation Guard - full page load (App Router refresh)", () => {
+  test("should warn on reload after an accepted router.refresh()", async ({
+    page,
+  }) => {
+    await page.goto("/page1");
+    await expect(page.locator("text=Current Page: appRouter 1")).toBeVisible();
+    const counts = recordDialogs(page);
+    await enableGuard(page);
+
+    await page.getByRole("button", { name: "router.refresh()" }).click();
+    await expect.poll(() => counts.confirm).toBe(1);
+    await page.waitForTimeout(500);
+
+    await reloadExpectingBeforeUnload(page, counts);
+    await expect(page.locator("text=Current Page: appRouter 1")).toBeVisible();
+    expect(counts.confirm).toBe(1);
+  });
+});

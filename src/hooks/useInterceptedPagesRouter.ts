@@ -4,6 +4,10 @@ import { Url } from "next/dist/shared/lib/router/router";
 import { MutableRefObject, useContext, useMemo } from "react";
 import { GuardDef, NavigationGuardCallback } from "../types";
 import { evaluateGuards } from "../utils/evaluateGuards";
+import {
+  clearLeaveAccepted,
+  markLeaveAccepted,
+} from "../utils/leaveAcceptance";
 
 export function useInterceptedPagesRouter({
   guardMapRef,
@@ -28,7 +32,19 @@ export function useInterceptedPagesRouter({
         type,
       });
       if (!ok) return false;
-      return await accepted();
+      const acceptance = markLeaveAccepted();
+      if (type === "refresh") {
+        // location.reload() unloads the page and the record is consumed on beforeunload.
+        // Do not clear it here as accepted() resolves before beforeunload.
+        return await accepted();
+      }
+      try {
+        return await accepted();
+      } finally {
+        // Settled means the navigation is over (committed, cancelled or failed).
+        // A hard navigation never settles and is consumed on beforeunload instead.
+        clearLeaveAccepted(acceptance);
+      }
     };
 
     return {

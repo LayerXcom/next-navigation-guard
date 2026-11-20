@@ -2,6 +2,7 @@
 
 import { RenderedState } from "../types";
 import { DEBUG } from "./debug";
+import { clearLeaveAccepted } from "./leaveAcceptance";
 
 let setupDone = false;
 let writeState = () => {};
@@ -70,6 +71,9 @@ export function setupHistoryAugmentationOnce({
   }
 
   window.history.pushState = function (state, unused, url) {
+    // An accepted navigation has been committed as an SPA navigation.
+    clearLeaveAccepted();
+
     // If current state is not managed by this library, reset the state.
     if (!renderedStateRef.current.token) {
       renderedStateRef.current.token = newToken();
@@ -92,6 +96,9 @@ export function setupHistoryAugmentationOnce({
   };
 
   window.history.replaceState = function (state, unused, url) {
+    // An accepted navigation has been committed as an SPA navigation.
+    clearLeaveAccepted();
+
     // If current state is not managed by this library, reset the state.
     if (!renderedStateRef.current.token) {
       renderedStateRef.current.token = newToken();
