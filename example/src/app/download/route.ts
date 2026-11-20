@@ -3,8 +3,8 @@
 export function GET() {
   return new Response("download", {
     headers: {
-      "Content-Type": "text/plain",
-      "Content-Disposition": 'attachment; filename="download.txt"',
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": 'attachment; filename="download.bin"',
     },
   });
 }
